@@ -18,11 +18,19 @@
 #include <evince-view.h> /* this is for EvDocumentModel */
 #include <evince-document.h>
 
+typedef struct {
+        GtkWidget *public;
+        GtkWidget *presenter;
+} CallbackData;
+
 static void
 next_page (GtkWidget *widget,
            gpointer data)
 {
-        ev_view_next_page (EV_VIEW (data));
+        CallbackData *user_data = data;
+
+        ev_view_next_page (EV_VIEW (user_data->public));
+        ev_view_next_page (EV_VIEW (user_data->presenter));
 }
 
 static void
@@ -44,6 +52,7 @@ activate (GtkApplication *app,
         GtkWidget *presentation_view;
         GFile *file;
         GError *err = NULL;
+        CallbackData *data;
 
         window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
         presentation = gtk_window_new (GTK_WINDOW_TOPLEVEL);
@@ -94,9 +103,13 @@ activate (GtkApplication *app,
                         ev_view_set_model (EV_VIEW (presentation_view), model);
                         ev_view_set_model (EV_VIEW (next), model_next);
                         ev_view_next_page (EV_VIEW (next));
+                        
+                        data = g_slice_new0 (CallbackData);
+                        data->public = view;
+                        data->presenter = next;
 
-                        g_signal_connect (button, "clicked", G_CALLBACK (next_page), view);
-                        g_signal_connect (button, "clicked", G_CALLBACK (next_page), next);
+                        /* g_signal_connect (button, "clicked", G_CALLBACK (next_page), view); */
+                        g_signal_connect (button, "clicked", G_CALLBACK (next_page), data);
 
                         gtk_scrolled_window_set_min_content_width (GTK_SCROLLED_WINDOW (scrolled),
                                                                    800);
