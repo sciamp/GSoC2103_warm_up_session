@@ -31,6 +31,10 @@ next_page (GtkWidget *widget,
 
         ev_view_next_page (EV_VIEW (user_data->public));
         ev_view_next_page (EV_VIEW (user_data->presenter));
+        
+        /* I have a problem! Freeing data (or user_data) */
+        /* makes the application crash after the second click */
+        /* g_slice_free (CallbackData, user_data); */
 }
 
 static void
@@ -68,7 +72,7 @@ activate (GtkApplication *app,
 
         if (ev_init ())
         {
-                fprintf (stdout, "Yay! we got backends!\n");
+                g_print ("Yay! we got backends!\n");
        
                 file = g_file_new_for_path ("presentazione.pdf");
 
@@ -80,11 +84,13 @@ activate (GtkApplication *app,
                 ev_document_load_gfile (document, file, EV_DOCUMENT_LOAD_FLAG_NONE,
                                         NULL, &err);
 
+                g_object_unref (file);
+
                 g_assert ( (document != NULL) || (err != NULL));
 
                 if (err) 
                 {
-                        fprintf (stderr, "Error loading file: %s\n", err->message); 
+                        g_printerr ("Error loading file: %s\n", err->message); 
                 }
 
                 if (EV_IS_DOCUMENT (document))
@@ -92,23 +98,29 @@ activate (GtkApplication *app,
                         button = gtk_button_new_with_label ("Next!");
 
                         model = ev_document_model_new_with_document (document);
+                        g_object_unref (document);
                         ev_document_model_set_continuous (EV_DOCUMENT_MODEL (model), FALSE);
+
                         model_next = ev_document_model_new_with_document (document);
+                        g_object_unref (document);
                         ev_document_model_set_continuous (EV_DOCUMENT_MODEL (model_next), FALSE);
 
                         view = ev_view_new ();
                         next = ev_view_new ();
                         presentation_view = ev_view_new ();
+
                         ev_view_set_model (EV_VIEW (view), model);
+                        g_object_unref (model);
                         ev_view_set_model (EV_VIEW (presentation_view), model);
+                        g_object_unref (model);
                         ev_view_set_model (EV_VIEW (next), model_next);
+                        g_object_unref (model_next);
                         ev_view_next_page (EV_VIEW (next));
                         
                         data = g_slice_new0 (CallbackData);
                         data->public = view;
                         data->presenter = next;
 
-                        /* g_signal_connect (button, "clicked", G_CALLBACK (next_page), view); */
                         g_signal_connect (button, "clicked", G_CALLBACK (next_page), data);
 
                         gtk_scrolled_window_set_min_content_width (GTK_SCROLLED_WINDOW (scrolled),
